@@ -1,0 +1,47 @@
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Typing and linting caches
+.mypy_cache/
+.ruff_cache/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Build and packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Data and logs
+data/raw/
+data/*.db
+eval/reports/*
+!eval/reports/.gitkeep
+*.log
+
+# Editor and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
