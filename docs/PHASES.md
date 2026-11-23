@@ -4,8 +4,8 @@ This file is the source of truth for audits. Each exit criterion (E#.#) must be 
 
 | Phase | Name | Build prompts | Status |
 |---|---|---|---|
-| 0 | Setup | 1 | not started |
-| 1 | Ingestion and repository | 3 | not started |
+| 0 | Setup | 1 | audit passed |
+| 1 | Ingestion and repository | 3 | in progress |
 | 2 | RAG core with citations | 3 | not started |
 | 3 | Evaluation | 2 | not started |
 | 4 | API and UI | 3 | not started |

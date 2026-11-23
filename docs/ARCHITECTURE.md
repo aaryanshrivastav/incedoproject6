@@ -36,8 +36,10 @@ CROSS-CUTTING: prompt registry, automated evaluation, observability
 
 ```
 hubs(id, org_id, name, created_at)
-documents(id, org_id, source_uri, title, content_hash, version, status,
-          scope ENUM('hub','global'), owner_hub_id NULL, acl_tags TEXT[],
+documents(id, org_id, source_uri, title, content_hash, version,
+          status VARCHAR CHECK ('active','superseded','failed'),
+          failure_reason TEXT NULL,
+          scope VARCHAR CHECK ('hub','global'), owner_hub_id NULL, acl_tags TEXT[],
           created_at, updated_at)
 hub_documents(hub_id, document_id)                       -- many-to-many
 chunks(id, document_id, ordinal, parent_chunk_id NULL, text, page NULL, section NULL,
@@ -49,7 +51,14 @@ messages(id, conversation_id, role, content, citations JSONB,
 feedback(id, message_id, rating, comment, created_at)
 ```
 
-Indexes: HNSW on `chunks.embedding` (cosine), GIN on `chunks.tsv`, btree on `documents(org_id, status, scope)` and `hub_documents(hub_id)`.
+Indexes:
+- HNSW on `chunks.embedding` (cosine, `m=16, ef_construction=64`), GIN on `chunks.tsv`
+- Btree on `chunks(document_id, is_active)` and `chunks(content_hash)`
+- Unique on `chunks(document_id, ordinal)`
+- Unique on `documents(org_id, source_uri, version)`
+- Partial unique on `documents(org_id, source_uri)` WHERE `status = 'active'`
+- Btree on `documents(org_id, status, scope)` and GIN on `documents.acl_tags`
+- Btree on `hub_documents(document_id)` and Unique on `hubs(org_id, name)`
 
 ## Retrieval access invariant (I1)
 

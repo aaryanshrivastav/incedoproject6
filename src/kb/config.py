@@ -1,6 +1,7 @@
 """Application configuration single source of truth."""
 
 from functools import lru_cache
+from uuid import UUID
 
 from pydantic import Field, ValidationInfo, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -25,6 +26,10 @@ class Settings(BaseSettings):
     # App settings (optional in this phase)
     APP_ENV: str = Field(default="local", description="Environment: local, test, production")
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
+    DEFAULT_ORG_ID: UUID = Field(
+        default=UUID("00000000-0000-0000-0000-000000000001"),
+        description="Default organization UUID for single-org MVP",
+    )
 
     # LLM provider settings (optional in this phase)
     LLM_PROVIDER: str = Field(default="", description="LLM provider name")

@@ -19,7 +19,7 @@ from kb.domain.protocols import (
 class FakeEmbedder(EmbedderProtocol):
     """Deterministic hash-based dense vector embedder for testing."""
 
-    def __init__(self, dimension: int = 1536) -> None:
+    def __init__(self, dimension: int = 768) -> None:
         """Initialize embedder with fixed vector dimension."""
         if dimension <= 0:
             raise ValueError("dimension must be greater than 0")
