@@ -48,6 +48,10 @@ Sources -> Parse / OCR -> Chunk (table-aware) -> Embed -> Index & Upsert (idempo
 - **Python 3.12** (managed automatically via `uv`)
 - **[uv](https://docs.astral.sh/uv/)** (package and virtualenv manager)
 - **Docker & Docker Compose** (for PostgreSQL 16 + pgvector and Redis)
+- **Tesseract OCR binary** (required for OCR fallback on scanned PDFs)
+  - Ubuntu / Debian: `sudo apt-get update && sudo apt-get install -y tesseract-ocr tesseract-ocr-eng`
+  - macOS: `brew install tesseract`
+  - Windows: `winget install UB-Mannheim.TesseractOCR` (or via WSL: `sudo apt-get install -y tesseract-ocr`)
 
 ---
 

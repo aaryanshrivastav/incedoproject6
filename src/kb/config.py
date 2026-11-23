@@ -44,6 +44,15 @@ class Settings(BaseSettings):
     RERANKER_PROVIDER: str = Field(default="", description="Reranker provider name")
     RERANKER_MODEL: str = Field(default="", description="Reranker model identifier")
 
+    # Ingestion / OCR settings
+    OCR_LANG: str = Field(
+        default="eng", description="Language code for OCR fallback (default: eng)"
+    )
+    OCR_CHAR_THRESHOLD: int = Field(
+        default=25,
+        description="Minimum character count per page before triggering OCR fallback",
+    )
+
     # Auth settings (optional in this phase)
     JWT_ALGORITHM: str = Field(default="HS256", description="JWT signing algorithm")
 
