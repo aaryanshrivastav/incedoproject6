@@ -4,7 +4,7 @@ Status: `proposed` until the owner confirms. Agents must treat `proposed` items 
 
 | ID | Decision | Phase | Status | Notes |
 |---|---|---|---|---|
-| D-001 | Postgres + pgvector as the single store (vectors, full-text, metadata, ACLs) | Phase 0 | accepted | Validated in Phase 0 via docker-compose and pgvector extension ($0 cost) |
+| D-001 | Supabase (PostgreSQL 16 + pgvector) as the single store (vectors, full-text, metadata, ACLs) | Phase 0-1 | accepted | Cloud-hosted Supabase PostgreSQL 16 with pgvector extension enabled. Local Postgres container discontinued in favor of managed Supabase ($0 free tier) |
 | D-002 | Plain Python orchestration with thin adapters, no LangChain/LlamaIndex | Phase 0 | accepted | Established via domain protocols and unified LLM client ($0 cost) |
 | D-003 | Hybrid search via RRF fusion of vector and `tsvector` ranks | Phase 2 | proposed | Parameter constants locked during retrieval prompt 2.1 ($0 cost) |
 | D-004 | Hub-ready schema from migration 1 (I8) | Phase 1 | accepted | In-engine SQL schema with multi-hub and ACL support |
@@ -20,6 +20,8 @@ Status: `proposed` until the owner confirms. Agents must treat `proposed` items 
 | D-014 | Default Organization UUID for single-org MVP | Phase 1 | accepted | Fixed UUID constant `00000000-0000-0000-0000-000000000001` in Settings for single-org phase |
 | D-015 | Approximate token counter, tokenizer swappable | Phase 1 | accepted | Ingest pipeline uses `ApproxTokenCounter` (`ceil(chars / 4)`) behind `TokenCounter` Protocol, swappable for model-specific tokenizers without framework lock-in |
 | D-016 | Parsing libraries and permissive licenses | Phase 1 | accepted | Permissive licenses only: `pdfplumber` (MIT), `pytesseract` (Apache 2.0), `python-docx` (MIT), `beautifulsoup4` (MIT), `lxml` (BSD), `openpyxl` (MIT), dev `reportlab` (BSD), `pillow` (HPND). Strictly no `pandas` or `tiktoken` |
+| D-017 | Embedding reuse by chunk hash and model | Phase 1 | accepted | Ingestion queries existing chunk embeddings matching `content_hash` and `metadata["embedding_model"]`, avoiding redundant inference during document updates |
+| D-018 | Source URI identity rules | Phase 1 | accepted | `source_uri` is normalized relative path when `--source-root` is provided, otherwise canonical `file://` URI. Ensures stable document versioning across runs |
 
 ## Log
 
@@ -28,3 +30,5 @@ Status: `proposed` until the owner confirms. Agents must treat `proposed` items 
 - 2026-11-23: Constraint established: $0 budget for entire project. Adopted 100% local, open-source stack for D-006 (Ollama local LLM), D-008 (local cross-encoder), D-009 (100% local with WSL tesseract OCR), D-011 (local judge), and D-012 (synthetic/public corpus). D-007 (embedding model & dimension) currently in discussion.
 - 2026-11-23: Phase 1.1 implementation. Accepted D-007 (EMBEDDING_DIM = 768), D-013 (schema constraints with partial unique index), and D-014 (DEFAULT_ORG_ID constant).
 - 2026-11-23: Phase 1.2 implementation. Accepted D-015 (approximate token counter Protocol) and D-016 (permissive document parsing stack).
+- 2026-11-23: Phase 1.3 implementation. Accepted D-017 (chunk hash embedding reuse) and D-018 (source_uri identity rules).
+- 2026-11-23: Infrastructure decision update. Migrated datastore from local Docker Postgres to Supabase cloud-hosted PostgreSQL 16 with pgvector. All tables, extensions, and migrations run directly against Supabase. Local Docker Postgres is discontinued.

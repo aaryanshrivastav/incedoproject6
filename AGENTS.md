@@ -18,7 +18,7 @@ A RAG-based knowledge assistant. It ingests structured and unstructured document
 |---|---|
 | Language / tooling | Python 3.12, `uv`, `ruff`, `mypy --strict` on `src/`, `pytest` |
 | API | FastAPI, pydantic v2, SSE streaming |
-| Database | PostgreSQL 16 + pgvector, SQLAlchemy 2.0, Alembic, psycopg 3 |
+| Database | Supabase (PostgreSQL 16 + pgvector), SQLAlchemy 2.0, Alembic, psycopg 3 |
 | Keyword search | Postgres full-text (`tsvector`), fused with vector search via RRF |
 | Cache / queue | Redis |
 | Orchestration | Plain Python with thin adapters (no framework lock-in) |
@@ -74,7 +74,7 @@ docs/{ARCHITECTURE.md,PHASES.md,DECISIONS.md,audits/}
 ## Commands
 
 ```
-docker compose up -d              # postgres+pgvector, redis
+docker compose up -d              # redis (Postgres datastore hosted entirely on Supabase)
 uv run pytest -q                  # tests
 uv run ruff check . && uv run ruff format --check .
 uv run mypy src

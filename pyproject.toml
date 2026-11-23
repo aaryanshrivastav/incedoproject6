@@ -60,6 +60,9 @@ select = [
 ]
 ignore = []
 
+[tool.ruff.lint.per-file-ignores]
+"src/kb/cli.py" = ["B008"]
+
 [tool.mypy]
 python_version = "3.12"
 strict = true
@@ -78,6 +81,7 @@ module = [
     "openpyxl.*",
     "docx.*",
     "pdfplumber.*",
+    "sentence_transformers.*",
 ]
 ignore_missing_imports = true
 

@@ -19,16 +19,22 @@ from kb.domain.protocols import (
 class FakeEmbedder(EmbedderProtocol):
     """Deterministic hash-based dense vector embedder for testing."""
 
-    def __init__(self, dimension: int = 768) -> None:
-        """Initialize embedder with fixed vector dimension."""
+    def __init__(self, dimension: int = 768, model_name: str = "fake-embedder") -> None:
+        """Initialize embedder with fixed vector dimension and model identifier."""
         if dimension <= 0:
             raise ValueError("dimension must be greater than 0")
         self._dimension = dimension
+        self._model_name = model_name
 
     @property
     def dimension(self) -> int:
         """Return the vector dimensionality."""
         return self._dimension
+
+    @property
+    def model_name(self) -> str:
+        """Return the model identifier."""
+        return self._model_name
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
         """Embed list of texts into deterministic unit-normalized float vectors."""

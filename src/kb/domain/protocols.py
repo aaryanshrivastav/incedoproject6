@@ -76,6 +76,11 @@ class EmbedderProtocol(Protocol):
         """Return the vector dimensionality produced by this embedder."""
         ...
 
+    @property
+    def model_name(self) -> str:
+        """Return the name or identifier of the underlying embedding model."""
+        ...
+
 
 @runtime_checkable
 class RerankerProtocol(Protocol):

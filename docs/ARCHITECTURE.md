@@ -8,7 +8,7 @@ Client (Streamlit) -> FastAPI gateway (auth, rate limit, SSE)
   -> Input guard -> Rewrite -> Retrieve (hybrid + rerank) -> Generate (cited) -> Output guard
                                   |
                                   v
-                        KNOWLEDGE REPOSITORY (Postgres + pgvector)
+                        KNOWLEDGE REPOSITORY (Supabase PostgreSQL 16 + pgvector)
                                   ^
                                   |
 OFFLINE (throughput-sensitive)

@@ -1,6 +1,6 @@
 # Enterprise GenAI Knowledge Assistant
 
-A production-grade, retrieval-augmented generation (RAG) knowledge assistant. It ingests structured and unstructured documents, builds an embedding repository in PostgreSQL with pgvector, answers queries through a FastAPI gateway with verified citation grounding, and ships with guardrails, automated evaluation, and observability.
+A production-grade, retrieval-augmented generation (RAG) knowledge assistant. It ingests structured and unstructured documents, builds an embedding repository in Supabase (PostgreSQL with pgvector), answers queries through a FastAPI gateway with verified citation grounding, and ships with guardrails, automated evaluation, and observability.
 
 ---
 
@@ -20,7 +20,7 @@ User / Client (Streamlit UI) -> FastAPI Gateway (JWT auth, rate limits, SSE)
                              |
                              v
                   KNOWLEDGE REPOSITORY
-                (Postgres 16 + pgvector)
+                (Supabase Postgres 16 + pgvector)
                              ^
                              |
 OFFLINE (throughput-sensitive ingestion path)
@@ -47,7 +47,8 @@ Sources -> Parse / OCR -> Chunk (table-aware) -> Embed -> Index & Upsert (idempo
 
 - **Python 3.12** (managed automatically via `uv`)
 - **[uv](https://docs.astral.sh/uv/)** (package and virtualenv manager)
-- **Docker & Docker Compose** (for PostgreSQL 16 + pgvector and Redis)
+- **Supabase PostgreSQL 16 + pgvector** (cloud datastore configured via `DATABASE_URL` in `.env`)
+- **Docker & Docker Compose** (for Redis local queue/cache)
 - **Tesseract OCR binary** (required for OCR fallback on scanned PDFs)
   - Ubuntu / Debian: `sudo apt-get update && sudo apt-get install -y tesseract-ocr tesseract-ocr-eng`
   - macOS: `brew install tesseract`
@@ -64,7 +65,7 @@ copy .env.example .env
 ```
 
 ### 2. Start Infrastructure
-Launch PostgreSQL (with `pgvector` extension) and Redis in detached mode:
+Launch Redis (and optional local services) in detached mode (Postgres with `pgvector` is hosted on Supabase):
 ```powershell
 docker compose up -d
 docker compose ps
