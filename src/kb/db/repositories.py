@@ -196,6 +196,7 @@ class ChunkRepository:
                 section=c.section,
                 token_count=c.token_count,
                 content_hash=c.content_hash,
+                parent_chunk_id=c.parent_chunk_id,
                 metadata_=c.metadata,
                 is_active=True,
                 embedding=c.embedding,

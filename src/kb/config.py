@@ -43,6 +43,16 @@ class Settings(BaseSettings):
     # Reranker settings (optional in this phase)
     RERANKER_PROVIDER: str = Field(default="", description="Reranker provider name")
     RERANKER_MODEL: str = Field(default="", description="Reranker model identifier")
+    RERANK_ENABLED: bool = Field(default=True, description="Enable reranker stage")
+    RERANK_TOP_N: int = Field(default=8, description="Chunks kept after reranking")
+
+    # Context assembly settings
+    CONTEXT_BUDGET_TOKENS: int = Field(
+        default=3000, description="Token budget for context assembly"
+    )
+    CONTEXT_EXPAND_PARENTS: bool = Field(
+        default=False, description="Expand child chunks to parents"
+    )
 
     # Ingestion / OCR settings
     OCR_LANG: str = Field(

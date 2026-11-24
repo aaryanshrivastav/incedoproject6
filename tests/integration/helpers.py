@@ -84,6 +84,7 @@ async def create_test_chunk(
     is_active: bool = True,
     page: int | None = 1,
     section: str | None = "Section 1",
+    parent_chunk_id: UUID | None = None,
 ) -> ChunkModel:
     """Create a chunk with controlled text and embedding."""
     if embedding is None:
@@ -96,6 +97,7 @@ async def create_test_chunk(
         section=section,
         token_count=len(text.split()),
         content_hash=hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        parent_chunk_id=parent_chunk_id,
         metadata={"seed": text[:20]},
         embedding=embedding,
     )

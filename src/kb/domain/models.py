@@ -65,5 +65,6 @@ class NewChunk(BaseModel):
     section: str | None = Field(default=None, description="Section heading or table context")
     token_count: int = Field(ge=0, description="Approximate token count")
     content_hash: str = Field(description="SHA-256 hash of normalized text")
+    parent_chunk_id: UUID | None = Field(default=None, description="Optional parent chunk ID")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Arbitrary chunk metadata")
     embedding: list[float] = Field(description="Dense float vector embedding")

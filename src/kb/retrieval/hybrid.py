@@ -101,6 +101,7 @@ class HybridRetriever:
                     ChunkModel.section.label("section"),
                     ChunkModel.ordinal.label("ordinal"),
                     ChunkModel.content_hash.label("content_hash"),
+                    ChunkModel.parent_chunk_id.label("parent_chunk_id"),
                     dist_expr,
                 )
                 .join(DocumentModel, ChunkModel.document_id == DocumentModel.id)
@@ -134,6 +135,7 @@ class HybridRetriever:
                         ChunkModel.section.label("section"),
                         ChunkModel.ordinal.label("ordinal"),
                         ChunkModel.content_hash.label("content_hash"),
+                        ChunkModel.parent_chunk_id.label("parent_chunk_id"),
                         rank_expr,
                     )
                     .join(DocumentModel, ChunkModel.document_id == DocumentModel.id)
@@ -155,6 +157,7 @@ class HybridRetriever:
                         row.section,
                         row.ordinal,
                         row.content_hash,
+                        row.parent_chunk_id,
                         float(row.rank_score),
                     )
                     for row in (await session.execute(fts_stmt)).all()
@@ -182,12 +185,13 @@ class HybridRetriever:
                     "section": row.section,
                     "ordinal": row.ordinal,
                     "content_hash": row.content_hash,
+                    "parent_chunk_id": row.parent_chunk_id,
                 }
 
         for rank_idx, fts_item in enumerate(fts_rows, start=1):
             cid = fts_item[0]
             fts_ranks[cid] = rank_idx
-            fts_scores[cid] = fts_item[9]
+            fts_scores[cid] = fts_item[10]
             if cid not in payloads:
                 payloads[cid] = {
                     "document_id": fts_item[1],
@@ -198,6 +202,7 @@ class HybridRetriever:
                     "section": fts_item[6],
                     "ordinal": fts_item[7],
                     "content_hash": fts_item[8],
+                    "parent_chunk_id": fts_item[9],
                 }
 
         all_ids = set(vector_ranks.keys()) | set(fts_ranks.keys())
@@ -236,6 +241,7 @@ class HybridRetriever:
                     section=data["section"],
                     ordinal=int(data["ordinal"]),
                     content_hash=str(data["content_hash"]),
+                    parent_chunk_id=data["parent_chunk_id"],
                     vector_similarity=vector_sims.get(cid),
                     fts_rank_score=fts_scores.get(cid),
                     vector_rank=vector_ranks.get(cid),

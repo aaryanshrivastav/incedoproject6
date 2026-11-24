@@ -1,8 +1,8 @@
 """Factory for building embedder instances based on application settings."""
 
 from kb.config import Settings, get_settings
-from kb.domain.protocols import EmbedderProtocol
-from kb.llm.fakes import FakeEmbedder
+from kb.domain.protocols import EmbedderProtocol, RerankerProtocol
+from kb.llm.fakes import FakeEmbedder, FakeReranker
 
 
 class ConfigError(Exception):
@@ -43,3 +43,21 @@ def build_embedder(settings: Settings | None = None) -> EmbedderProtocol:
         f"Unsupported EMBEDDING_PROVIDER '{provider}'. "
         "Supported providers: 'fake', 'sentence-transformers'."
     )
+
+
+def build_reranker(settings: Settings | None = None) -> RerankerProtocol:
+    """Select and instantiate a RerankerProtocol implementation from configuration.
+
+    'fake' is always available for deterministic local testing.
+    """
+    if settings is None:
+        settings = get_settings()
+
+    provider = settings.RERANKER_PROVIDER.strip().lower()
+    if not provider:
+        raise ConfigError("RERANKER_PROVIDER is unset. Set RERANKER_PROVIDER='fake' for testing.")
+
+    if provider == "fake":
+        return FakeReranker()
+
+    raise ConfigError(f"Unsupported RERANKER_PROVIDER '{provider}'. Supported providers: 'fake'.")

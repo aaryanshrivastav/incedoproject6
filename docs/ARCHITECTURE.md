@@ -76,8 +76,10 @@ Every retrieval query must restrict candidates to chunks that satisfy all of:
 Retrieval is structured in `src/kb/retrieval/`:
 - `filters.py`: Single source of truth for constructing the SQL access filter (`eligible_chunk_conditions(access: AccessContext)`). Enforces Invariant I1 across all search queries.
 - `hybrid.py`: `HybridRetriever` executes vector cosine search (`<=>`) with pgvector iterative scan (`hnsw.iterative_scan = relaxed_order`) and full-text search against `chunks.tsv` with `ts_rank_cd`, fusing candidate lists via Reciprocal Rank Fusion ($k=60$).
-- `rerank.py`: Cross-encoder scoring and re-ordering layer behind `RerankerProtocol` (Phase 2.2).
-- `context.py`: Token budget enforcement, deduplication, deterministic ordering, and `<context>` formatting (Phase 2.2).
+- `rerank.py`: `RerankStage` scores candidates via `RerankerProtocol`, sorts by `rerank_score` descending (tie-breaking on `fused_score` then `chunk_id`), and truncates to `top_n`. Can be disabled for ablation (`final_score = fused_score`).
+- `parents.py`: `get_eligible_parent_chunks` looks up parent chunks for hierarchical expansion strictly bounded by `eligible_chunk_conditions(access)` (Invariant I1).
+- `context.py`: `ContextAssembler` enforces token budgets via `TokenCounter`, deduplicates identical `content_hash` across documents, performs access-controlled parent expansion, and applies deterministic hierarchical document/ordinal ordering without trimming overlap (D-021). Computes semantic `top_score` (D-022).
+- `retriever.py`: `Retriever` unifies `HybridRetriever` and `RerankStage` under `retrieve(query, access)`.
 
 ## Citation contract (I2)
 

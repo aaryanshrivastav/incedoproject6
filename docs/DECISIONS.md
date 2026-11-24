@@ -24,6 +24,8 @@ Status: `proposed` until the owner confirms. Agents must treat `proposed` items 
 | D-018 | Source URI identity rules | Phase 1 | accepted | `source_uri` is normalized relative path when `--source-root` is provided, otherwise canonical `file://` URI. Ensures stable document versioning across runs |
 | D-019 | RRF constants and tie-break rules | Phase 2 | accepted | Reciprocal Rank Fusion uses constant $k=60$ ($score = \sum 1 / (60 + rank)$ with 1-based ranks). Deterministic tie-break: descending `fused_score`, ascending `best_rank`, ascending `chunk_id` string |
 | D-020 | pgvector iterative scan and minimum version | Phase 2 | accepted | Vector retrieval requires pgvector >= 0.8.0 for `hnsw.iterative_scan = relaxed_order` to prevent under-fetching under restrictive access filters |
+| D-021 | Chunk overlap preserved untrimmed in context assembly | Phase 2 | accepted | Adjacent chunks keep their natural overlap text; do NOT trim overlap in context assembly because snippets must exactly match stored chunk text for citation verification |
+| D-022 | Relevance top_score definition and RRF separation | Phase 2 | accepted | `top_score` is the best semantic score available (highest rerank_score if reranking ran, else highest vector_similarity; None if neither). RRF scores cannot serve as absolute relevance thresholds because their magnitude varies with candidate pool sizes and relative rank distributions |
 
 ## Log
 
@@ -36,3 +38,4 @@ Status: `proposed` until the owner confirms. Agents must treat `proposed` items 
 - 2026-11-23: Infrastructure decision update. Migrated datastore from local Docker Postgres to Supabase cloud-hosted PostgreSQL 16 with pgvector. All tables, extensions, and migrations run directly against Supabase. Local Docker Postgres is discontinued.
 - 2026-11-24: Hardware-tailored inference plan: Selected `llama3.2:3b` as primary generation model for 12-core CPU / 16GB RAM, with models directed to drive D: (`OLLAMA_MODELS=D:\ollama\models`, 262 GB free).
 - 2026-11-24: Phase 2.1 implementation. Accepted D-019 (RRF parameters and tie-breaker) and D-020 (pgvector 0.8.0+ iterative scan).
+- 2026-11-24: Phase 2.2 implementation. Accepted D-021 (overlap kept untrimmed) and D-022 (top_score definition and rejection of RRF for relevance thresholds).
