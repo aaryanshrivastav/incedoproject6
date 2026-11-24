@@ -71,6 +71,14 @@ Every retrieval query must restrict candidates to chunks that satisfy all of:
 
 `:org_id`, `:user_tags` come from the verified token. `:hub_id` comes from the path and is checked against the user's hub access. Query plans may be optimized, but these semantics may not change. With HNSW, filtered queries can return fewer than k rows; verify behavior and use iterative scans or an over-fetch strategy so that k eligible results are returned when they exist.
 
+## Retrieval architecture
+
+Retrieval is structured in `src/kb/retrieval/`:
+- `filters.py`: Single source of truth for constructing the SQL access filter (`eligible_chunk_conditions(access: AccessContext)`). Enforces Invariant I1 across all search queries.
+- `hybrid.py`: `HybridRetriever` executes vector cosine search (`<=>`) with pgvector iterative scan (`hnsw.iterative_scan = relaxed_order`) and full-text search against `chunks.tsv` with `ts_rank_cd`, fusing candidate lists via Reciprocal Rank Fusion ($k=60$).
+- `rerank.py`: Cross-encoder scoring and re-ordering layer behind `RerankerProtocol` (Phase 2.2).
+- `context.py`: Token budget enforcement, deduplication, deterministic ordering, and `<context>` formatting (Phase 2.2).
+
 ## Citation contract (I2)
 
 - Context chunks are presented to the model with stable IDs: `<chunk id="...">...</chunk>`.

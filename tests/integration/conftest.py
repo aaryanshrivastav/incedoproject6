@@ -20,17 +20,24 @@ from kb.config import get_settings
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-settings = get_settings()
-TEST_DB_URL = settings.DATABASE_URL
-os.environ["DATABASE_URL"] = TEST_DB_URL
-os.environ["REDIS_URL"] = settings.REDIS_URL
-os.environ["JWT_SECRET"] = settings.JWT_SECRET
-os.environ["EMBEDDING_DIM"] = str(settings.EMBEDDING_DIM)
+import pytest
+
+try:
+    settings = get_settings()
+    TEST_DB_URL = settings.DATABASE_URL
+    os.environ["DATABASE_URL"] = TEST_DB_URL
+    os.environ["REDIS_URL"] = settings.REDIS_URL
+    os.environ["JWT_SECRET"] = settings.JWT_SECRET
+    os.environ["EMBEDDING_DIM"] = str(settings.EMBEDDING_DIM)
+except Exception:
+    TEST_DB_URL = os.environ.get("DATABASE_URL", "")
 
 
 @pytest_asyncio.fixture
 async def db_engine() -> AsyncIterator[AsyncEngine]:
     """Create asynchronous SQLAlchemy engine for integration tests."""
+    if not TEST_DB_URL:
+        pytest.skip("Integration database not configured (DATABASE_URL unset)")
     engine = create_async_engine(TEST_DB_URL, echo=False, pool_pre_ping=True)
     yield engine
     await engine.dispose()

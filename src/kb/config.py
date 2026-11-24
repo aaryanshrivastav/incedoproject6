@@ -56,6 +56,20 @@ class Settings(BaseSettings):
     # Auth settings (optional in this phase)
     JWT_ALGORITHM: str = Field(default="HS256", description="JWT signing algorithm")
 
+    # Retrieval settings
+    RETRIEVAL_VECTOR_K: int = Field(default=50, description="Default vector candidate count")
+    RETRIEVAL_FTS_K: int = Field(default=50, description="Default full-text candidate count")
+    RETRIEVAL_FUSED_K: int = Field(default=30, description="Default fused top-k count")
+    RETRIEVAL_RRF_K: int = Field(default=60, description="Default RRF constant")
+    RETRIEVAL_HNSW_EF_SEARCH: int | None = Field(
+        default=None, description="HNSW ef_search parameter"
+    )
+
+    # Ollama settings
+    OLLAMA_BASE_URL: str = Field(
+        default="http://localhost:11434", description="Ollama API base URL"
+    )
+
     # Observability settings (optional in this phase)
     LANGFUSE_HOST: str = Field(default="", description="Langfuse host URL")
     LANGFUSE_PUBLIC_KEY: str = Field(default="", description="Langfuse public API key")

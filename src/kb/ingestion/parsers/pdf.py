@@ -26,11 +26,18 @@ class PDFParser:
         ocr_char_threshold: int | None = None,
         ocr_lang: str | None = None,
     ) -> None:
-        settings = get_settings()
+        try:
+            settings = get_settings()
+            default_threshold = settings.OCR_CHAR_THRESHOLD
+            default_lang = settings.OCR_LANG
+        except Exception:
+            default_threshold = 25
+            default_lang = "eng"
+
         self.ocr_char_threshold = (
-            ocr_char_threshold if ocr_char_threshold is not None else settings.OCR_CHAR_THRESHOLD
+            ocr_char_threshold if ocr_char_threshold is not None else default_threshold
         )
-        self.ocr_lang = ocr_lang if ocr_lang is not None else settings.OCR_LANG
+        self.ocr_lang = ocr_lang if ocr_lang is not None else default_lang
 
     def parse(self, path: Path) -> ParsedDocument:
         """Parse a PDF file into a ParsedDocument."""

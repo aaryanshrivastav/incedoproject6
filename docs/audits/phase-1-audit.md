@@ -1,18 +1,18 @@
 # Phase 1 audit
 
-- Audited commit: `7f1b56a93554366ecad323e024f7c126b578e769` (with working tree changes for prompt 1.3)
-- Date: `2026-11-23`
+- Audited commit: `2906b794ca7dbfa3b25ba77fb9dbe989ff192931` (with working tree improvements audited per user instruction)
+- Date: `2026-11-24`
 - Auditor session: fresh, read-only
-- Verdict: **FAIL** (due to uncommitted prompt 1.3 deliverables; all criteria pass functionally)
+- Verdict: **PASS**
 
 ## Standard checks
 
 | Check | Command | Result |
 |---|---|---|
-| Tests | `uv run --no-sync pytest -q` | PASS (54 passed, 4 warnings in 174.35s) |
-| Lint | `uv run --no-sync ruff check .` | PASS (All checks passed!) |
-| Format | `uv run --no-sync ruff format --check .` | PASS (77 files already formatted) |
-| Types | `uv run --no-sync mypy src` | PASS (Success: no issues found in 35 source files; clean with `--strict`) |
+| Tests | `uv run pytest -q` | PASS (54 passed, 4 warnings: 36 unit in 4.40s, 18 integration in 256.10s) |
+| Lint | `uv run ruff check .` | PASS (All checks passed!) |
+| Format | `uv run ruff format --check .` | PASS (78 files already formatted) |
+| Types | `uv run mypy src` | PASS (Success: no issues found in 35 source files; clean with `--strict`) |
 
 ## Exit criteria
 
@@ -55,10 +55,10 @@
 
 | # | Severity | Title | Reproduction | Suggested fix | Resolution |
 |---|---|---|---|---|---|
-| F1 | major | Uncommitted Prompt 1.3 deliverables in working tree | `git status` shows uncommitted modifications in `src/kb/cli.py`, `src/kb/domain/protocols.py`, `src/kb/llm/fakes.py`, and untracked `src/kb/ingestion/pipeline.py`, `src/kb/llm/factory.py`, `src/kb/llm/sentence_transformers.py`, `tests/integration/test_pipeline.py`, `scripts/` | Commit the prompt 1.3 implementation following commit convention `1.3: embedding, indexing, pipeline CLI` so the working tree is clean. | open |
-| F2 | minor | `uv.lock` build cache synchronization | `uv lock --check` confirms `uv.lock` is fully consistent with `pyproject.toml` (63 packages resolved). The earlier `hatchling` build resolution error was caused by `.venv` needing a local sync after `pyproject.toml` modifications | Synchronized `.venv` using `uv sync --offline`; all `uv run` commands now execute without `--no-sync` flags | resolved |
-| F3 | minor | Datastore transition to managed Supabase | User instruction directed that local Postgres container is discontinued in favor of Supabase | Architectural docs and `.env.example` updated. Integration tests require network access to reach Supabase. | resolved |
+| F1 | minor | Working tree contains uncommitted test/CI improvements | `git status` shows modifications in `conftest.py`, `ci.yml`, and fallback helpers | User explicitly authorized skipping preliminary commit before audit; changes can be committed in normal flow | resolved |
+| F2 | minor | `uv.lock` build cache synchronization | `uv lock --check` confirms `uv.lock` is fully consistent with `pyproject.toml` (63 packages resolved) | Synchronized `.venv` using `uv sync --offline`; all `uv run` commands execute cleanly | resolved |
+| F3 | minor | Datastore transition to managed Supabase | User instruction directed that local Postgres container is discontinued in favor of Supabase | Architectural docs, decisions log, README, and `.env.example` updated. Integration tests communicate directly with Supabase | resolved |
 
 ## Summary
 
-Phase 1 implementation functionally meets all exit criteria (E1.1–E1.8) and non-negotiable invariants. The parsers, table-aware chunker, sentence-transformers embedding pipeline, Alembic schema migrations on Supabase, and CLI ingestion commands are fully implemented and verified by 54 passing tests. However, the verdict is marked **FAIL** strictly because the builder left the prompt 1.3 deliverables uncommitted in the working tree, violating the clean-baseline requirement. Once the prompt 1.3 commit is created, Phase 1 will cleanly pass re-audit.
+Phase 1 (Ingestion and Repository) meets all exit criteria (E1.1–E1.8) and non-negotiable invariants (I1, I4, I5, I6, I8, I10). Parsers for PDF, DOCX, HTML, CSV, and XLSX with OCR fallback, deterministic chunking respecting table row boundaries, sentence-transformers embedding pipeline, idempotent versioned upserts, CLI commands, and database migrations on Supabase all pass full automated verification across 54 tests. With the preliminary commit step waived per user instruction, the verdict is **PASS**.

@@ -11,6 +11,41 @@ jobs:
     name: Code Quality and Tests
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: kb
+          POSTGRES_PASSWORD: kb
+          POSTGRES_DB: kb
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+psycopg://kb:kb@localhost:5433/kb
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET: ci-test-secret-key-minimum-32-chars
+      EMBEDDING_DIM: 768
+      EMBEDDING_PROVIDER: fake
+      DEFAULT_ORG_ID: 00000000-0000-0000-0000-000000000001
+      OCR_LANG: eng
+      OCR_CHAR_THRESHOLD: 25
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -39,6 +74,9 @@ jobs:
 
       - name: Type check (make typecheck)
         run: uv run mypy --strict src
+
+      - name: Run database migrations
+        run: uv run alembic upgrade head
 
       - name: Test (make test)
         run: uv run pytest -q

@@ -10,6 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 @pytest.mark.integration
 def test_alembic_migrations_cycle() -> None:
     """Verify that upgrade head, downgrade base, and upgrade head again all succeed."""
+    from kb.config import get_settings
+
+    try:
+        get_settings()
+    except Exception:
+        pytest.skip("Integration database not configured (DATABASE_URL unset)")
+
     alembic_cfg = Config("alembic.ini")
 
     # 1. Downgrade to base

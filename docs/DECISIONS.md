@@ -9,7 +9,7 @@ Status: `proposed` until the owner confirms. Agents must treat `proposed` items 
 | D-003 | Hybrid search via RRF fusion of vector and `tsvector` ranks | Phase 2 | proposed | Parameter constants locked during retrieval prompt 2.1 ($0 cost) |
 | D-004 | Hub-ready schema from migration 1 (I8) | Phase 1 | accepted | In-engine SQL schema with multi-hub and ACL support |
 | D-005 | Citation format `[[chunk:<id>]]` with server-side validation | Phase 2 | accepted | Parsing and context validation contract |
-| D-006 | LLM provider and model | Phase 2 | accepted | **100% Local / $0 budget**: Local LLM via Ollama (e.g. `llama3.2:3b` / `qwen2.5:3b`) |
+| D-006 | LLM provider and model | Phase 2 | accepted | **100% Local / $0 budget**: Local LLM via Ollama (`llama3.2:3b` primary, `qwen2.5:3b` secondary). Models stored on drive D: (`OLLAMA_MODELS=D:\ollama\models`) leveraging 262 GB free space. Tuned for 12-core CPU/16GB RAM. |
 | D-007 | Embedding model and dimension | Phase 1 | accepted | **$0 budget local package**: `BAAI/bge-base-en-v1.5` (`sentence-transformers`), `EMBEDDING_DIM = 768` |
 | D-008 | Reranker (cross-encoder, local or hosted) | Phase 2 | accepted | **100% Local / $0 budget**: Local cross-encoder (`ms-marco-MiniLM-L-6-v2`) or token overlap |
 | D-009 | Hosted vs fully local models | Phase 1-2 | accepted | **100% Fully Local / $0 budget**: OCR via `wsl tesseract` (v5.3.4), local embeddings and generation |
@@ -22,6 +22,8 @@ Status: `proposed` until the owner confirms. Agents must treat `proposed` items 
 | D-016 | Parsing libraries and permissive licenses | Phase 1 | accepted | Permissive licenses only: `pdfplumber` (MIT), `pytesseract` (Apache 2.0), `python-docx` (MIT), `beautifulsoup4` (MIT), `lxml` (BSD), `openpyxl` (MIT), dev `reportlab` (BSD), `pillow` (HPND). Strictly no `pandas` or `tiktoken` |
 | D-017 | Embedding reuse by chunk hash and model | Phase 1 | accepted | Ingestion queries existing chunk embeddings matching `content_hash` and `metadata["embedding_model"]`, avoiding redundant inference during document updates |
 | D-018 | Source URI identity rules | Phase 1 | accepted | `source_uri` is normalized relative path when `--source-root` is provided, otherwise canonical `file://` URI. Ensures stable document versioning across runs |
+| D-019 | RRF constants and tie-break rules | Phase 2 | accepted | Reciprocal Rank Fusion uses constant $k=60$ ($score = \sum 1 / (60 + rank)$ with 1-based ranks). Deterministic tie-break: descending `fused_score`, ascending `best_rank`, ascending `chunk_id` string |
+| D-020 | pgvector iterative scan and minimum version | Phase 2 | accepted | Vector retrieval requires pgvector >= 0.8.0 for `hnsw.iterative_scan = relaxed_order` to prevent under-fetching under restrictive access filters |
 
 ## Log
 
@@ -32,3 +34,5 @@ Status: `proposed` until the owner confirms. Agents must treat `proposed` items 
 - 2026-11-23: Phase 1.2 implementation. Accepted D-015 (approximate token counter Protocol) and D-016 (permissive document parsing stack).
 - 2026-11-23: Phase 1.3 implementation. Accepted D-017 (chunk hash embedding reuse) and D-018 (source_uri identity rules).
 - 2026-11-23: Infrastructure decision update. Migrated datastore from local Docker Postgres to Supabase cloud-hosted PostgreSQL 16 with pgvector. All tables, extensions, and migrations run directly against Supabase. Local Docker Postgres is discontinued.
+- 2026-11-24: Hardware-tailored inference plan: Selected `llama3.2:3b` as primary generation model for 12-core CPU / 16GB RAM, with models directed to drive D: (`OLLAMA_MODELS=D:\ollama\models`, 262 GB free).
+- 2026-11-24: Phase 2.1 implementation. Accepted D-019 (RRF parameters and tie-breaker) and D-020 (pgvector 0.8.0+ iterative scan).

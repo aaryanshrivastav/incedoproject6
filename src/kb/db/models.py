@@ -6,7 +6,6 @@ from uuid import UUID
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
-    ARRAY,
     Boolean,
     CheckConstraint,
     Computed,
@@ -20,7 +19,7 @@ from sqlalchemy import (
 from sqlalchemy import (
     text as sa_text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from kb.config import get_settings
@@ -127,8 +126,11 @@ class HubDocumentModel(Base):
     )
 
 
-# Read embedding dimension dynamically from Settings (e.g. 768 for BAAI/bge-base-en-v1.5)
-_EMBEDDING_DIM = get_settings().EMBEDDING_DIM or 768
+# Read embedding dimension dynamically from Settings (fallback to 768 if unconfigured)
+try:
+    _EMBEDDING_DIM = get_settings().EMBEDDING_DIM or 768
+except Exception:
+    _EMBEDDING_DIM = 768
 
 
 class ChunkModel(Base):

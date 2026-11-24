@@ -291,10 +291,17 @@ async def test_sql_check_zero_active_chunks_with_null_or_invalid_embedding(
     assert count == 0
 
 
+@pytest.mark.integration
 def test_cli_ingest_and_docs_list(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify Typer CLI commands 'ingest' and 'docs list'."""
-    monkeypatch.setenv("EMBEDDING_PROVIDER", "fake")
     from kb.config import get_settings
+
+    try:
+        get_settings()
+    except Exception:
+        pytest.skip("Integration database not configured (DATABASE_URL unset)")
+
+    monkeypatch.setenv("EMBEDDING_PROVIDER", "fake")
 
     get_settings.cache_clear()
     runner = CliRunner()
