@@ -1,8 +1,9 @@
 """Factory for building embedder instances based on application settings."""
 
 from kb.config import Settings, get_settings
-from kb.domain.protocols import EmbedderProtocol, RerankerProtocol
-from kb.llm.fakes import FakeEmbedder, FakeReranker
+from kb.domain.protocols import EmbedderProtocol, LLMProtocol, RerankerProtocol
+from kb.llm.fakes import FakeEmbedder, FakeLLM, FakeReranker
+from kb.llm.ollama import OllamaLLM
 
 
 class ConfigError(Exception):
@@ -61,3 +62,33 @@ def build_reranker(settings: Settings | None = None) -> RerankerProtocol:
         return FakeReranker()
 
     raise ConfigError(f"Unsupported RERANKER_PROVIDER '{provider}'. Supported providers: 'fake'.")
+
+
+def build_llm(settings: Settings | None = None) -> LLMProtocol:
+    """Select and instantiate an LLMProtocol implementation from configuration.
+
+    'fake' is always available for deterministic local testing.
+    'ollama' connects to local Ollama daemon using configured model.
+    """
+    if settings is None:
+        settings = get_settings()
+
+    provider = settings.LLM_PROVIDER.strip().lower()
+    if not provider:
+        raise ConfigError(
+            "LLM_PROVIDER is unset. Set LLM_PROVIDER='fake' for testing "
+            "or 'ollama' for local inference."
+        )
+
+    if provider == "fake":
+        return FakeLLM(model_name=settings.LLM_MODEL or "fake-model")
+
+    if provider == "ollama":
+        return OllamaLLM(
+            base_url=settings.OLLAMA_BASE_URL,
+            model=settings.LLM_MODEL or "llama3.2:3b",
+        )
+
+    raise ConfigError(
+        f"Unsupported LLM_PROVIDER '{provider}'. Supported providers: 'fake', 'ollama'."
+    )

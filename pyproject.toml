@@ -93,4 +93,5 @@ asyncio_default_fixture_loop_scope = "function"
 markers = [
     "integration: integration tests requiring real Postgres and Redis containers",
     "requires_tesseract: tests requiring local tesseract binary",
+    "live: tests requiring live model services or local daemon",
 ]

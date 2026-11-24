@@ -93,7 +93,28 @@ All core tasks can be run using `uv run` or via `make` targets:
 | **Run All Checks** | `make check` | `make check` |
 | **CLI Version** | `uv run kb version` | - |
 | **CLI Help** | `uv run kb --help` | - |
+| **CLI Ask Query** | `uv run kb ask "What is the policy?" --hub default` | - |
 | **Start API Gateway** | `uv run uvicorn kb.api.app:app --reload --port 8000` | - |
+
+---
+
+## Asking Questions with `kb ask`
+
+The `kb ask` CLI provides a trusted local development interface for testing end-to-end RAG answer generation, citation grounding, and refusal gating over ingested documents:
+
+```powershell
+# Basic query against the default hub
+uv run kb ask "What are the database connection guidelines?" --hub default
+
+# Query with access tags (simulating user ACL permissions)
+uv run kb ask "Summarize Q3 financial results" --hub default --user-tag finance
+
+# Inspect the retrieved and assembled context bundle along with answers
+uv run kb ask "How does iterative scan work?" --hub default --show-context
+
+# Output the complete AnswerResult structure as JSON
+uv run kb ask "Explain parent expansion" --hub default --json
+```
 
 ---
 

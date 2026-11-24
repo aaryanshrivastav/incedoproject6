@@ -83,10 +83,14 @@ Retrieval is structured in `src/kb/retrieval/`:
 
 ## Citation contract (I2)
 
-- Context chunks are presented to the model with stable IDs: `<chunk id="...">...</chunk>`.
-- The model cites with `[[chunk:<id>]]`. The parser rejects any ID not present in the context.
-- The resolver maps each valid ID to `{document_title, source_uri, page, section, snippet}`.
-- Refusal response has `refusal=true` and no citations.
+- Context chunks are presented to the model inside `<context>` with stable IDs and metadata: `<chunk id="..." title="..." page="..." section="...">...</chunk>`. Closing tags within chunk bodies are sanitized to prevent delimiter breakouts (I3).
+- The model outputs a strict JSON object: `{"answer": str, "citations": [ids], "refusal": bool, "refusal_reason": str|null}`.
+- Every claim in `answer` is cited with `[[chunk:<id>]]` at the sentence end. The citation parser merges inline markers with the `citations` list.
+- Every cited ID is validated against the active context. Unknown or invented IDs are stripped from the answer text and recorded in `invalid_citations`.
+- Non-refusal answers with zero valid citations are retried once or refused (`uncited_answer`) per `ON_UNCITED` policy. Uncited answers are never returned as confident answers.
+- The resolver maps valid IDs to `Citation` objects `{chunk_id, document_id, document_title, source_uri, page, section, snippet, snippet_truncated}`. Snippets are extracted strictly from stored chunk text (up to `SNIPPET_MAX_CHARS` at a word boundary), never from LLM output.
+- Refusals have `refusal=true`, a typed `refusal_reason` (`no_context`, `low_relevance`, `model_declined`, `invalid_model_output`, `uncited_answer`), a clear human-readable explanation, and `citations=[]`.
+- Empty context and low-relevance score checks short-circuit before invoking the LLM.
 
 ## API surface (target by Phase 4)
 

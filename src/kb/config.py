@@ -31,10 +31,24 @@ class Settings(BaseSettings):
         description="Default organization UUID for single-org MVP",
     )
 
-    # LLM provider settings (optional in this phase)
-    LLM_PROVIDER: str = Field(default="", description="LLM provider name")
-    LLM_MODEL: str = Field(default="", description="LLM model identifier")
+    # LLM provider settings
+    LLM_PROVIDER: str = Field(default="ollama", description="LLM provider name")
+    LLM_MODEL: str = Field(default="llama3.2:3b", description="LLM model identifier")
     LLM_API_KEY: str = Field(default="", description="LLM provider API key")
+
+    # Generation & Refusal settings (Phase 2.3)
+    REFUSAL_MIN_SCORE: float = Field(
+        default=0.0,
+        description="Minimum relevance score for answering (0.0 disables refusal gating)",
+    )
+    ON_UNCITED: str = Field(
+        default="retry",
+        description="Behavior when answer is uncited: 'retry' or 'refuse'",
+    )
+    SNIPPET_MAX_CHARS: int = Field(
+        default=240,
+        description="Maximum characters for resolved citation snippet",
+    )
 
     # Embedding settings (optional in this phase)
     EMBEDDING_PROVIDER: str = Field(default="", description="Embedding provider name")

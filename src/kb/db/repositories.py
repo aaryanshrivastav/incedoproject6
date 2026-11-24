@@ -17,6 +17,12 @@ class HubRepository:
         """Initialize repository with an active asynchronous session."""
         self.session = session
 
+    async def get_by_name(self, org_id: UUID, name: str) -> HubModel | None:
+        """Retrieve an existing hub by name within an org, returning None if not found."""
+        stmt = select(HubModel).where(HubModel.org_id == org_id, HubModel.name == name)
+        res = await self.session.execute(stmt)
+        return res.scalar_one_or_none()
+
     async def get_or_create(self, org_id: UUID, name: str) -> HubModel:
         """Retrieve an existing hub by name within an org or create a new one."""
         stmt = select(HubModel).where(HubModel.org_id == org_id, HubModel.name == name)

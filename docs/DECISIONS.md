@@ -26,6 +26,8 @@ Status: `proposed` until the owner confirms. Agents must treat `proposed` items 
 | D-020 | pgvector iterative scan and minimum version | Phase 2 | accepted | Vector retrieval requires pgvector >= 0.8.0 for `hnsw.iterative_scan = relaxed_order` to prevent under-fetching under restrictive access filters |
 | D-021 | Chunk overlap preserved untrimmed in context assembly | Phase 2 | accepted | Adjacent chunks keep their natural overlap text; do NOT trim overlap in context assembly because snippets must exactly match stored chunk text for citation verification |
 | D-022 | Relevance top_score definition and RRF separation | Phase 2 | accepted | `top_score` is the best semantic score available (highest rerank_score if reranking ran, else highest vector_similarity; None if neither). RRF scores cannot serve as absolute relevance thresholds because their magnitude varies with candidate pool sizes and relative rank distributions |
+| D-023 | Output JSON contract and retry policy | Phase 2 | accepted | Generation model must output strict JSON schema. Malformed JSON triggers exactly 1 retry before refusing (`invalid_model_output`). Non-refusal answers with 0 valid citations trigger 1 retry or immediate refusal per `ON_UNCITED`, preventing hallucinations from returning as confident answers |
+| D-024 | Refusal reasons and short-circuit pre-checks | Phase 2 | accepted | Pipeline short-circuits WITHOUT calling the LLM when context is empty (`no_context`) or top score is below `REFUSAL_MIN_SCORE` (`low_relevance`). Model-reported insufficiency yields `model_declined`. All refusals carry `citations=[]` and human-readable reasons |
 
 ## Log
 
@@ -39,3 +41,4 @@ Status: `proposed` until the owner confirms. Agents must treat `proposed` items 
 - 2026-11-24: Hardware-tailored inference plan: Selected `llama3.2:3b` as primary generation model for 12-core CPU / 16GB RAM, with models directed to drive D: (`OLLAMA_MODELS=D:\ollama\models`, 262 GB free).
 - 2026-11-24: Phase 2.1 implementation. Accepted D-019 (RRF parameters and tie-breaker) and D-020 (pgvector 0.8.0+ iterative scan).
 - 2026-11-24: Phase 2.2 implementation. Accepted D-021 (overlap kept untrimmed) and D-022 (top_score definition and rejection of RRF for relevance thresholds).
+- 2026-11-24: Phase 2.3 implementation. Accepted D-023 (output JSON contract and retry policy) and D-024 (refusal reasons and short-circuit pre-checks). Real Ollama adapter implemented in `src/kb/llm/ollama.py`.

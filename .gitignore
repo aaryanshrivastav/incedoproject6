@@ -31,8 +31,8 @@ dist/
 *.egg
 
 # Data and logs
-data/raw/
-data/*.db
+data/
+sample_docs/
 eval/reports/*
 !eval/reports/.gitkeep
 *.log

@@ -12,8 +12,16 @@ from kb.config import get_settings
 from kb.db.repositories import DocumentRepository, HubRepository
 from kb.db.session import session_scope
 from kb.domain.models import DocumentScope
+from kb.domain.retrieval import AccessContext, ContextConfig, RerankConfig
+from kb.generation.generator import Generator
 from kb.ingestion.pipeline import IngestionPipeline, IngestRequest
-from kb.llm.factory import build_embedder
+from kb.llm.client import LLMClient
+from kb.llm.factory import build_embedder, build_llm, build_reranker
+from kb.rag.service import RagService
+from kb.retrieval.context import ContextAssembler
+from kb.retrieval.hybrid import HybridRetriever
+from kb.retrieval.rerank import RerankStage
+from kb.retrieval.retriever import Retriever
 
 app = typer.Typer(
     name="kb",
@@ -201,6 +209,164 @@ def list_docs(
                 )
 
     asyncio.run(_list())
+
+
+@app.command(name="ask")
+def ask(
+    question: str = typer.Argument(
+        ...,
+        help="Question to ask the knowledge assistant",
+    ),
+    hub: str = typer.Option(
+        "default",
+        "--hub",
+        "-h",
+        help="Target hub name",
+    ),
+    user_tags: list[str] = typer.Option(
+        None,
+        "--user-tag",
+        "-t",
+        help="User access control tag (repeatable)",
+    ),
+    org_id: UUID | None = typer.Option(
+        None,
+        "--org-id",
+        "-o",
+        help="Organization UUID (defaults to DEFAULT_ORG_ID from settings)",
+    ),
+    no_rerank: bool = typer.Option(
+        False,
+        "--no-rerank",
+        help="Disable reranker stage and rely solely on fused hybrid retrieval",
+    ),
+    show_context: bool = typer.Option(
+        False,
+        "--show-context",
+        help="Print retrieved and assembled context items",
+    ),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Output raw AnswerResult as JSON",
+    ),
+) -> None:
+    """Ask a question grounded in the knowledge repository with verifiable citations.
+
+    Note: This CLI is a trusted development tool allowing manual specification of hub and
+    user tags. In production, the API (Phase 4) derives identity, org_id, and ACL tags
+    strictly from the verified auth token.
+    """
+    settings = get_settings()
+    effective_org_id = org_id or settings.DEFAULT_ORG_ID
+    tags_set = frozenset(user_tags) if user_tags else frozenset()
+
+    async def _ask() -> None:
+        async with session_scope() as session:
+            # 1. Look up hub by name
+            hub_repo = HubRepository(session)
+            hub_model = await hub_repo.get_by_name(effective_org_id, hub)
+            if hub_model is None:
+                typer.secho(
+                    f"Error: Hub '{hub}' not found in organization '{effective_org_id}'.",
+                    fg=typer.colors.RED,
+                    err=True,
+                )
+                raise typer.Exit(code=1)
+
+            hub_id = hub_model.id
+
+        # 2. Build pipeline components
+        from kb.db.session import get_session_factory
+
+        session_factory = get_session_factory()
+        embedder = build_embedder(settings)
+        reranker = build_reranker(settings)
+        llm_protocol = build_llm(settings)
+        llm_client = LLMClient(llm_protocol)
+
+        hybrid_retriever = HybridRetriever(session_factory, embedder)
+        rerank_stage = RerankStage(
+            reranker,
+            RerankConfig(
+                enabled=not no_rerank and settings.RERANK_ENABLED,
+                top_n=settings.RERANK_TOP_N,
+            ),
+        )
+        retriever = Retriever(hybrid_retriever, rerank_stage)
+        assembler = ContextAssembler(
+            config=ContextConfig(
+                budget_tokens=settings.CONTEXT_BUDGET_TOKENS,
+                expand_parents=settings.CONTEXT_EXPAND_PARENTS,
+            ),
+            session_factory=session_factory,
+        )
+        generator = Generator(
+            llm_client,
+            prompt_name="answer",
+            prompt_version="1.0.0",
+            on_uncited=settings.ON_UNCITED,
+            snippet_max_chars=settings.SNIPPET_MAX_CHARS,
+        )
+        rag_service = RagService(
+            retriever=retriever,
+            assembler=assembler,
+            generator=generator,
+            refusal_min_score=settings.REFUSAL_MIN_SCORE,
+        )
+
+        access = AccessContext(
+            org_id=effective_org_id,
+            hub_id=hub_id,
+            user_tags=tags_set,
+        )
+
+        # 3. Optional context inspection before generation
+        if show_context:
+            candidates = await retriever.retrieve(question, access)
+            bundle = await assembler.assemble(candidates, access)
+            summary_line = (
+                f"\n--- Assembled Context ({len(bundle.items)} chunks, "
+                f"{bundle.total_tokens} tokens) ---"
+            )
+            typer.echo(summary_line)
+            for idx, item in enumerate(bundle.items, start=1):
+                typer.echo(
+                    f"[{idx}] Chunk ID: {item.chunk_id} | Doc: {item.document_title} "
+                    f"(Score: {item.final_score:.4f})"
+                )
+                typer.echo(
+                    f"    Page: {item.page} | Section: {item.section} | URI: {item.source_uri}"
+                )
+                typer.echo(f"    Text: {item.text[:120]}...\n")
+
+        # 4. Execute ask pipeline
+        result = await rag_service.ask(question, access)
+
+        # 5. Render output
+        if json_output:
+            typer.echo(result.model_dump_json(indent=2))
+            return
+
+        if result.refusal:
+            typer.secho(f"\nRefusal ({result.refusal_reason}):", fg=typer.colors.YELLOW, bold=True)
+            typer.echo(result.answer)
+            return
+
+        typer.secho("\nAnswer:", fg=typer.colors.GREEN, bold=True)
+        typer.echo(result.answer)
+
+        if result.citations:
+            typer.secho("\nSources:", bold=True)
+            for idx, cit in enumerate(result.citations, start=1):
+                page_str = f"Page {cit.page}" if cit.page is not None else "Page N/A"
+                sec_str = f"Section: {cit.section}" if cit.section else ""
+                loc_str = f" ({page_str}, {sec_str})" if sec_str else f" ({page_str})"
+                trunc_suffix = "..." if cit.snippet_truncated else ""
+                typer.echo(f"[{idx}] {cit.document_title}{loc_str} - {cit.source_uri}")
+                typer.echo(f'    "{cit.snippet}{trunc_suffix}"\n')
+
+    asyncio.run(_ask())
 
 
 if __name__ == "__main__":

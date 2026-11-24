@@ -1,9 +1,11 @@
 """Deterministic fake implementations of domain protocols for tests."""
 
 import hashlib
+import json
 import math
+import re
 import struct
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from typing import Any
 
 from kb.domain.protocols import (
@@ -60,14 +62,47 @@ class FakeLLM(LLMProtocol):
     def __init__(
         self,
         default_response: str = "Fake generated response",
-        responses: dict[str, str] | None = None,
+        responses: dict[str, str] | list[str] | Callable[[str], str] | None = None,
         model_name: str = "fake-model",
     ) -> None:
-        """Initialize stub LLM with predefined responses."""
+        """Initialize stub LLM with predefined responses, scripted sequence, or callable."""
         self.default_response = default_response
-        self.responses: dict[str, str] = responses or {}
+        self.responses = responses
         self.model_name = model_name
         self.history: list[dict[str, Any]] = []
+        self._call_index: int = 0
+
+    def _next_response(self, prompt: str) -> str:
+        """Resolve the next response based on responses configuration."""
+        if callable(self.responses):
+            return self.responses(prompt)
+        if isinstance(self.responses, list):
+            if self._call_index < len(self.responses):
+                resp = self.responses[self._call_index]
+                self._call_index += 1
+                return resp
+            return self.default_response
+        if isinstance(self.responses, dict):
+            return self.responses.get(prompt, self.default_response)
+
+        # Smart default for RAG cited generation when responses are not predefined
+        if self.default_response == "Fake generated response" and "<chunk id=" in prompt:
+            m = re.search(r'<chunk id="([a-zA-Z0-9_\-]+)"', prompt)
+            if m:
+                cid = m.group(1)
+                return json.dumps(
+                    {
+                        "answer": (
+                            "Based on the provided documentation, this claim is verified "
+                            f"[[chunk:{cid}]]."
+                        ),
+                        "citations": [cid],
+                        "refusal": False,
+                        "refusal_reason": None,
+                    }
+                )
+
+        return self.default_response
 
     async def generate(
         self,
@@ -77,8 +112,8 @@ class FakeLLM(LLMProtocol):
         temperature: float = 0.0,
         max_tokens: int | None = None,
     ) -> LLMResponse:
-        """Generate response based on exact prompt match or default fallback."""
-        content = self.responses.get(prompt, self.default_response)
+        """Generate response based on scripted responses, callable, exact match, or fallback."""
+        content = self._next_response(prompt)
         prompt_tokens = len(prompt.split()) + (len(system_prompt.split()) if system_prompt else 0)
         completion_tokens = len(content.split())
         total_tokens = prompt_tokens + completion_tokens
@@ -110,7 +145,7 @@ class FakeLLM(LLMProtocol):
         max_tokens: int | None = None,
     ) -> AsyncIterator[str]:
         """Stream response words sequentially."""
-        content = self.responses.get(prompt, self.default_response)
+        content = self._next_response(prompt)
         self.history.append(
             {
                 "prompt": prompt,
