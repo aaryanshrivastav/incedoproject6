@@ -1,0 +1,23 @@
+{
+  "_comment": "Provisional defaults until the first real calibrated baseline is promoted (D-029).",
+  "max_drop": {
+    "recall@5": 0.03,
+    "mrr": 0.03,
+    "ndcg@5": 0.03,
+    "faithfulness": 0.05,
+    "answer_relevance": 0.05,
+    "context_precision": 0.05,
+    "context_recall": 0.05,
+    "refusal_accuracy": 0.05,
+    "citation_validity_rate": 0.02
+  },
+  "max_rise": {
+    "false_refusal_rate": 0.05,
+    "missed_refusal_rate": 0.05
+  },
+  "hard_gates": {
+    "max_access_leaks": 0,
+    "max_answer_leaks": 0,
+    "fail_on_invalid_judge_metric": true
+  }
+}

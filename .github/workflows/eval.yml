@@ -1,0 +1,118 @@
+name: Evaluation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  eval-fixture-gate:
+    name: Fixture-Based Evaluation & Gate
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: kb
+          POSTGRES_PASSWORD: kb
+          POSTGRES_DB: kb
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+psycopg://kb:kb@localhost:5433/kb
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET: ci-test-secret-key-minimum-32-chars
+      EMBEDDING_DIM: 768
+      EMBEDDING_PROVIDER: fake
+      LLM_PROVIDER: fake
+      RERANKER_PROVIDER: fake
+      JUDGE_PROVIDER: fake
+      DEFAULT_ORG_ID: 00000000-0000-0000-0000-000000000001
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-groups
+
+      - name: Run database migrations
+        run: uv run alembic upgrade head
+
+      - name: Run fixture-based eval & regression gate tests
+        run: uv run pytest -m eval_fixture -v
+
+  eval-live-gate:
+    name: Live Evaluation & Regression Gate
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: ${{ secrets.EVAL_DATABASE_URL }}
+      REDIS_URL: ${{ secrets.EVAL_REDIS_URL }}
+      JWT_SECRET: ${{ secrets.EVAL_JWT_SECRET }}
+      EMBEDDING_DIM: 768
+      EMBEDDING_PROVIDER: ${{ secrets.EVAL_EMBEDDING_PROVIDER }}
+      EMBEDDING_MODEL: ${{ secrets.EVAL_EMBEDDING_MODEL }}
+      LLM_PROVIDER: ${{ secrets.EVAL_LLM_PROVIDER }}
+      LLM_MODEL: ${{ secrets.EVAL_LLM_MODEL }}
+      LLM_API_KEY: ${{ secrets.EVAL_LLM_API_KEY }}
+      RERANKER_PROVIDER: ${{ secrets.EVAL_RERANKER_PROVIDER }}
+      JUDGE_PROVIDER: ${{ secrets.EVAL_JUDGE_PROVIDER }}
+      JUDGE_MODEL: ${{ secrets.EVAL_JUDGE_MODEL }}
+      JUDGE_API_KEY: ${{ secrets.EVAL_JUDGE_API_KEY }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-groups
+
+      - name: Setup evaluation corpus
+        run: uv run kb eval setup --plan eval/golden/corpus_plan.json --root data/raw/sample
+
+      - name: Run evaluation suite
+        run: uv run kb eval run --golden eval/golden/golden.jsonl --out eval/reports
+
+      - name: Run regression gate
+        run: |
+          LATEST_REPORT=$(ls -1td eval/reports/*/ | head -n 1)
+          uv run kb eval gate --report "$LATEST_REPORT" --baseline eval/baselines/default.json --thresholds eval/thresholds.json

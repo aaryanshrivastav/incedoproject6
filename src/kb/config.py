@@ -36,6 +36,15 @@ class Settings(BaseSettings):
     LLM_MODEL: str = Field(default="llama3.2:3b", description="LLM model identifier")
     LLM_API_KEY: str = Field(default="", description="LLM provider API key")
 
+    # Evaluation judge settings (Phase 3.2)
+    JUDGE_PROVIDER: str = Field(default="", description="Judge LLM provider name")
+    JUDGE_MODEL: str = Field(default="", description="Judge LLM model identifier")
+    JUDGE_API_KEY: str = Field(default="", description="Judge LLM provider API key")
+    JUDGE_BASE_URL: str = Field(
+        default="",
+        description="Optional judge Ollama base URL (falls back to OLLAMA_BASE_URL when empty)",
+    )
+
     # Generation & Refusal settings (Phase 2.3)
     REFUSAL_MIN_SCORE: float = Field(
         default=0.0,

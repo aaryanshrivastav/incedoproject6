@@ -95,4 +95,5 @@ markers = [
     "integration: integration tests requiring real Postgres and Redis containers",
     "requires_tesseract: tests requiring local tesseract binary",
     "live: tests requiring live model services or local daemon",
+    "eval_fixture: fixture-based end-to-end evaluation tests",
 ]

@@ -118,6 +118,40 @@ uv run kb ask "Explain parent expansion" --hub default --json
 
 ---
 
+---
+
+## Evaluation
+
+The Phase 3 evaluation harness measures retrieval (`recall@k`, `precision@k`, `mrr`, `ndcg@k`), behavior (`refusal_accuracy`, `citation_validity_rate`, `access_leaks`, `answer_leaks`), and judge-based generation quality (`faithfulness`, `answer_relevance`, `context_precision`, `context_recall`).
+
+```powershell
+# 1. Setup evaluation corpus (idempotent)
+uv run kb eval setup --plan eval/golden/corpus_plan.json --root data/raw/sample
+
+# 2. Run evaluation over reviewed golden items
+uv run kb eval run --golden eval/golden/golden.jsonl --out eval/reports
+
+# 3. Promote a baseline (deliberate, separate commit)
+uv run kb eval baseline set eval/reports/<timestamp>-<hash> --name default
+
+# 4. Run regression gate against eval/thresholds.json
+uv run kb eval gate --report eval/reports/<timestamp>-<hash> --baseline eval/baselines/default.json --thresholds eval/thresholds.json
+
+# 5. Calibrate REFUSAL_MIN_SCORE without modifying config
+uv run kb eval calibrate --report eval/reports/<timestamp>-<hash>
+```
+
+### CI Evaluation Secrets (for `workflow_dispatch` in `.github/workflows/eval.yml`)
+- `EVAL_DATABASE_URL`, `EVAL_REDIS_URL`, `EVAL_JWT_SECRET`
+- `EVAL_EMBEDDING_PROVIDER`, `EVAL_EMBEDDING_MODEL`
+- `EVAL_LLM_PROVIDER`, `EVAL_LLM_MODEL`, `EVAL_LLM_API_KEY`
+- `EVAL_RERANKER_PROVIDER`
+- `EVAL_JUDGE_PROVIDER`, `EVAL_JUDGE_MODEL`, `EVAL_JUDGE_API_KEY`
+
+> Note: Always-on PR/push CI runs `pytest -m eval_fixture` with local fake providers and requires **no secrets**. Updating `eval/baselines/*.json` must be a deliberate, separate commit.
+
+---
+
 ## Git Workflow & Conventions
 
 Follow the rules in `.agents/rules/05-git-and-workflow.md`:

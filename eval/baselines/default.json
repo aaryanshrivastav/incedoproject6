@@ -1,0 +1,227 @@
+{
+  "name": "default",
+  "timestamp": "2026-11-25T19:21:35.923814+00:00",
+  "git_commit": "89ec262",
+  "config_hash": "593441add2dea8ad8ae4bf2a5da880724d5b5d5127db1a890c4aa94d8523c8bc",
+  "golden_hash": "d6848dbfbd34ea9bff95bf1465e73e290845736bd8eff23cf21ef8cd2bc4df6e",
+  "item_count": 12,
+  "models": {
+    "llm": "llama3.2:3b",
+    "embedder": "BAAI/bge-base-en-v1.5",
+    "reranker": "fake-reranker",
+    "judge": "qwen2.5:3b"
+  },
+  "config": {
+    "retrieval": {
+      "vector_k": 50,
+      "fts_k": 50,
+      "fused_k": 30,
+      "rrf_k": 60,
+      "hnsw_ef_search": null
+    },
+    "rerank": {
+      "enabled": true,
+      "top_n": 8
+    },
+    "context": {
+      "budget_tokens": 3000,
+      "expand_parents": false
+    },
+    "refusal_min_score": 0.0,
+    "on_uncited": "retry"
+  },
+  "summary_metrics": {
+    "evidence_in_context": {
+      "mean": 0.9,
+      "n": 10,
+      "std_error": 0.1,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "mrr": {
+      "mean": 0.8166666666666667,
+      "n": 10,
+      "std_error": 0.12285191326386656,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "ndcg@1": {
+      "mean": 0.8,
+      "n": 10,
+      "std_error": 0.13333333333333333,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "ndcg@3": {
+      "mean": 0.8,
+      "n": 10,
+      "std_error": 0.13333333333333333,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "ndcg@5": {
+      "mean": 0.8,
+      "n": 10,
+      "std_error": 0.13333333333333333,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "ndcg@8": {
+      "mean": 0.8356207187108022,
+      "n": 10,
+      "std_error": 0.11275655707761809,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "precision@1": {
+      "mean": 0.8,
+      "n": 10,
+      "std_error": 0.13333333333333333,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "precision@3": {
+      "mean": 0.26666666666666666,
+      "n": 10,
+      "std_error": 0.04444444444444444,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "precision@5": {
+      "mean": 0.16,
+      "n": 10,
+      "std_error": 0.02666666666666667,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "precision@8": {
+      "mean": 0.1125,
+      "n": 10,
+      "std_error": 0.0125,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "recall@1": {
+      "mean": 0.8,
+      "n": 10,
+      "std_error": 0.13333333333333333,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "recall@3": {
+      "mean": 0.8,
+      "n": 10,
+      "std_error": 0.13333333333333333,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "recall@5": {
+      "mean": 0.8,
+      "n": 10,
+      "std_error": 0.13333333333333333,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "recall@8": {
+      "mean": 0.9,
+      "n": 10,
+      "std_error": 0.1,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "refusal_accuracy": {
+      "mean": 0.6666666666666666,
+      "n": 12,
+      "std_error": 0.0,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "false_refusal_rate": {
+      "mean": 0.4,
+      "n": 12,
+      "std_error": 0.0,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "missed_refusal_rate": {
+      "mean": 0.0,
+      "n": 12,
+      "std_error": 0.0,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "citation_validity_rate": {
+      "mean": 0.5454545454545454,
+      "n": 12,
+      "std_error": 0.0,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "access_leaks": {
+      "mean": 0.0,
+      "n": 12,
+      "std_error": 0.0,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "answer_leaks": {
+      "mean": 0.0,
+      "n": 12,
+      "std_error": 0.0,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "faithfulness": {
+      "mean": 1.0,
+      "n": 6,
+      "std_error": 0.0,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "answer_relevance": {
+      "mean": 0.8333333333333334,
+      "n": 6,
+      "std_error": 0.16666666666666669,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "context_precision": {
+      "mean": 0.8226190476190476,
+      "n": 10,
+      "std_error": 0.11944971775524,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    },
+    "context_recall": {
+      "mean": 0.3125,
+      "n": 10,
+      "std_error": 0.1505199322349037,
+      "judge_failures": 0,
+      "invalid": false,
+      "skipped": false
+    }
+  }
+}

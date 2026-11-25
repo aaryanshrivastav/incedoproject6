@@ -50,6 +50,13 @@ golden_app = typer.Typer(
 )
 eval_app.add_typer(golden_app, name="golden")
 
+baseline_app = typer.Typer(
+    name="baseline",
+    help="Manage evaluation baselines",
+    no_args_is_help=True,
+)
+eval_app.add_typer(baseline_app, name="baseline")
+
 
 @app.callback()
 def main() -> None:
@@ -878,6 +885,253 @@ def golden_validate(
         for violation in violations:
             typer.secho(f"Violation: {violation}", fg=typer.colors.RED, err=True)
         raise typer.Exit(code=1)
+
+
+@eval_app.command(name="run")
+def eval_run(
+    golden: Path = typer.Option(
+        Path("eval/golden/golden.jsonl"),
+        "--golden",
+        help="Path to golden JSONL file",
+    ),
+    out: Path = typer.Option(
+        Path("eval/reports"),
+        "--out",
+        help="Output directory for timestamped evaluation report",
+    ),
+    include_unreviewed: bool = typer.Option(
+        False,
+        "--include-unreviewed",
+        help="Include unreviewed items (stamps report exploratory=true; never baselined)",
+    ),
+    no_judge: bool = typer.Option(
+        False,
+        "--no-judge",
+        help="Skip LLM-as-a-judge metrics",
+    ),
+    set_overrides: list[str] = typer.Option(
+        [],
+        "--set",
+        help="In-memory config override (key=value)",
+    ),
+    limit: int | None = typer.Option(None, "--limit", help="Limit number of items evaluated"),
+    concurrency: int = typer.Option(4, "--concurrency", help="Max concurrent evaluations"),
+    k_values: str = typer.Option("1,3,5,8", "--k", help="Comma-separated k values for retrieval"),
+    plan: Path | None = typer.Option(
+        Path("eval/golden/corpus_plan.json"),
+        "--plan",
+        help="Corpus plan JSON for preflight verification",
+    ),
+    root: Path = typer.Option(
+        Path("data/raw/sample"),
+        "--root",
+        help="Corpus root directory for preflight verification",
+    ),
+) -> None:
+    """Run evaluation suite over golden dataset and write report.json + report.md."""
+    from kb.db.session import get_session_factory
+    from kb.evaluation.corpus_plan import load_corpus_plan
+    from kb.evaluation.metrics.judge import NativeJudgeEvaluator
+    from kb.evaluation.runner import (
+        apply_config_overrides,
+        parse_set_overrides,
+        run_evaluation,
+    )
+    from kb.llm.factory import ConfigError, build_judge
+
+    settings = get_settings()
+    try:
+        overrides = parse_set_overrides(set_overrides)
+    except ValueError as exc:
+        typer.secho(f"Error: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+
+    ret_cfg, rerank_cfg, ctx_cfg, min_score = apply_config_overrides(settings, overrides)
+    ks = tuple(int(part.strip()) for part in k_values.split(",") if part.strip())
+
+    try:
+        embedder = build_embedder(settings)
+        reranker = build_reranker(settings)
+        llm = build_llm(settings)
+        judge_llm = None if no_judge else build_judge(settings)
+    except ConfigError as exc:
+        typer.secho(f"Configuration Error: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+
+    session_factory = get_session_factory()
+    hybrid = HybridRetriever(session_factory, embedder, config=ret_cfg)
+    rerank_stage = RerankStage(reranker, config=rerank_cfg)
+    retriever = Retriever(hybrid, rerank_stage)
+    assembler = ContextAssembler(config=ctx_cfg, session_factory=session_factory)
+    generator = Generator(
+        LLMClient(llm),
+        prompt_name="answer",
+        prompt_version="1.0.0",
+        on_uncited=settings.ON_UNCITED,
+        snippet_max_chars=settings.SNIPPET_MAX_CHARS,
+    )
+    rag_service = RagService(
+        retriever=retriever,
+        assembler=assembler,
+        generator=generator,
+        refusal_min_score=min_score,
+    )
+    judge_eval = NativeJudgeEvaluator(LLMClient(judge_llm)) if judge_llm is not None else None
+    loaded_plan = load_corpus_plan(plan) if plan is not None and plan.exists() else None
+
+    models = {
+        "llm": getattr(llm, "model_name", settings.LLM_MODEL or settings.LLM_PROVIDER),
+        "embedder": getattr(embedder, "model_name", settings.EMBEDDING_MODEL),
+        "reranker": settings.RERANKER_MODEL or settings.RERANKER_PROVIDER,
+        "judge": (
+            getattr(judge_llm, "model_name", settings.JUDGE_MODEL or settings.JUDGE_PROVIDER)
+            if judge_llm is not None
+            else "none"
+        ),
+    }
+
+    async def _run() -> None:
+        report, report_dir = await run_evaluation(
+            golden_path=golden,
+            out_dir=out,
+            session_factory=session_factory,
+            rag_service=rag_service,
+            settings=settings,
+            retrieval_cfg=ret_cfg,
+            rerank_cfg=rerank_cfg,
+            context_cfg=ctx_cfg,
+            refusal_min_score=min_score,
+            models=models,
+            judge=judge_eval,
+            plan=loaded_plan,
+            corpus_root=root,
+            include_unreviewed=include_unreviewed,
+            limit=limit,
+            concurrency=concurrency,
+            ks=ks,
+        )
+        typer.secho(f"\nEvaluation Complete -> {report_dir}", fg=typer.colors.GREEN, bold=True)
+        typer.echo(f"  Items       : {report.item_count} (exploratory={report.exploratory})")
+        typer.echo(f"  Config Hash : {report.config_hash[:12]}")
+        for warn in report.warnings:
+            typer.secho(f"  WARNING: {warn}", fg=typer.colors.YELLOW)
+
+    try:
+        asyncio.run(_run())
+    except ValueError as exc:
+        typer.secho(f"Evaluation Error:\n{exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+
+
+@baseline_app.command(name="set")
+def eval_baseline_set(
+    report_dir: Path = typer.Argument(..., help="Path to evaluation report directory"),
+    name: str = typer.Option("default", "--name", help="Baseline name (default: 'default')"),
+    baselines_dir: Path = typer.Option(
+        Path("eval/baselines"),
+        "--baselines-dir",
+        help="Directory for committed baseline files",
+    ),
+) -> None:
+    """Promote a non-exploratory, valid evaluation report to eval/baselines/<name>.json."""
+    from kb.evaluation.gate import save_baseline
+
+    try:
+        out_path = save_baseline(report_dir, name=name, baselines_dir=baselines_dir)
+    except (FileNotFoundError, ValueError) as exc:
+        typer.secho(f"Baseline Error: {exc}", fg=typer.colors.RED, err=True)
+        raise typer.Exit(code=1) from exc
+
+    typer.secho(f"Baseline saved -> {out_path}", fg=typer.colors.GREEN, bold=True)
+    typer.echo("Note: Updating a baseline should be committed in its own deliberate commit.")
+
+
+@eval_app.command(name="gate")
+def eval_gate(
+    report: Path = typer.Option(..., "--report", help="Path to candidate report directory"),
+    baseline: Path = typer.Option(
+        Path("eval/baselines/default.json"),
+        "--baseline",
+        help="Path to baseline JSON file",
+    ),
+    thresholds: Path = typer.Option(
+        Path("eval/thresholds.json"),
+        "--thresholds",
+        help="Path to thresholds JSON file",
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Emit raw JSON gate result"),
+    allow_golden_change: bool = typer.Option(
+        False,
+        "--allow-golden-change",
+        help="Allow golden_hash mismatch against baseline",
+    ),
+) -> None:
+    """Check evaluation report against baseline and thresholds. Exits non-zero on regression."""
+    from kb.evaluation.gate import evaluate_gate
+
+    result = evaluate_gate(
+        report_path=report,
+        baseline_path=baseline,
+        thresholds_path=thresholds,
+        allow_golden_change=allow_golden_change,
+    )
+
+    if json_output:
+        typer.echo(result.model_dump_json(indent=2))
+    else:
+        for info in result.info_messages:
+            typer.secho(info, fg=typer.colors.CYAN)
+        for hf in result.hard_failures:
+            typer.secho(hf, fg=typer.colors.RED, bold=True)
+
+        typer.echo("\n| Metric | Baseline | Current | Delta | StdErr | Threshold | Status |")
+        typer.echo("|---|---|---|---|---|---|---|")
+        for row in result.rows:
+            b_str = f"{row.baseline:.4f}" if row.baseline is not None else "N/A"
+            c_str = f"{row.current:.4f}" if row.current is not None else "N/A"
+            d_str = f"{row.delta:+.4f}" if row.delta is not None else "N/A"
+            se_str = f"{row.std_error:.4f}" if row.std_error is not None else "N/A"
+            typer.echo(
+                f"| {row.metric} | {b_str} | {c_str} | {d_str} | {se_str} | "
+                f"{row.threshold} | {row.status} |"
+            )
+
+    if not result.passed:
+        raise typer.Exit(code=1)
+
+
+@eval_app.command(name="calibrate")
+def eval_calibrate(
+    report: Path = typer.Option(..., "--report", help="Path to evaluation report directory"),
+    max_false_refusal: float = typer.Option(
+        0.10,
+        "--max-false-refusal",
+        help="Maximum allowed false refusal rate on answerable items",
+    ),
+) -> None:
+    """Sweep REFUSAL_MIN_SCORE thresholds and recommend optimal threshold without editing config."""
+    from kb.evaluation.calibrate import calibrate_report
+
+    res = calibrate_report(report, max_false_refusal_rate=max_false_refusal)
+    typer.secho(f"\n{res.caveat}", fg=typer.colors.YELLOW)
+    typer.echo("\n| Threshold | False Refusal | Missed Refusal | Balanced Accuracy |")
+    typer.echo("|---|---|---|---|")
+    for pt in res.points:
+        typer.echo(
+            f"| {pt.threshold:.4f} | {pt.false_refusal_rate:.4f} | "
+            f"{pt.missed_refusal_rate:.4f} | {pt.balanced_accuracy:.4f} |"
+        )
+    if res.recommended_threshold is not None:
+        typer.secho(
+            f"\nRecommended REFUSAL_MIN_SCORE: {res.recommended_threshold:.4f} "
+            f"(balanced_accuracy={res.recommended_balanced_accuracy:.4f})",
+            fg=typer.colors.GREEN,
+            bold=True,
+        )
+    else:
+        typer.secho(
+            "\nNo threshold satisfied the false_refusal_rate constraint.", fg=typer.colors.RED
+        )
 
 
 if __name__ == "__main__":

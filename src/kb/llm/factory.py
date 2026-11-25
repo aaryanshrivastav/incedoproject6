@@ -92,3 +92,36 @@ def build_llm(settings: Settings | None = None) -> LLMProtocol:
     raise ConfigError(
         f"Unsupported LLM_PROVIDER '{provider}'. Supported providers: 'fake', 'ollama'."
     )
+
+
+def build_judge(settings: Settings | None = None) -> LLMProtocol:
+    """Select and instantiate an LLMProtocol judge implementation from configuration.
+
+    'fake' is always available for deterministic testing.
+    'ollama' connects to the configured Ollama daemon (JUDGE_BASE_URL or OLLAMA_BASE_URL).
+    """
+    if settings is None:
+        settings = get_settings()
+
+    provider = settings.JUDGE_PROVIDER.strip().lower()
+    if not provider:
+        raise ConfigError(
+            "JUDGE_PROVIDER is unset. Set JUDGE_PROVIDER='fake' for testing "
+            "or 'ollama' with JUDGE_MODEL for evaluation."
+        )
+
+    if provider == "fake":
+        return FakeLLM(model_name=settings.JUDGE_MODEL or "fake-judge")
+
+    if provider == "ollama":
+        if not settings.JUDGE_MODEL.strip():
+            raise ConfigError("JUDGE_MODEL is required when JUDGE_PROVIDER='ollama'.")
+        base_url = settings.JUDGE_BASE_URL.strip() or settings.OLLAMA_BASE_URL
+        return OllamaLLM(
+            base_url=base_url,
+            model=settings.JUDGE_MODEL.strip(),
+        )
+
+    raise ConfigError(
+        f"Unsupported JUDGE_PROVIDER '{provider}'. Supported providers: 'fake', 'ollama'."
+    )

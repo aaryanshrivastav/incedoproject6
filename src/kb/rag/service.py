@@ -2,13 +2,23 @@
 
 import logging
 
+from pydantic import BaseModel, Field
+
 from kb.domain.answers import AnswerResult, RefusalReason
-from kb.domain.retrieval import AccessContext
+from kb.domain.retrieval import AccessContext, ContextBundle, ScoredChunk
 from kb.generation.generator import Generator
 from kb.retrieval.context import ContextAssembler
 from kb.retrieval.retriever import Retriever
 
 logger = logging.getLogger(__name__)
+
+
+class RagTrace(BaseModel):
+    """Detailed intermediate retrieval and context artifacts for a single ask call."""
+
+    candidates: list[ScoredChunk] = Field(default_factory=list)
+    bundle: ContextBundle
+    top_score: float | None = None
 
 
 class RagService:
@@ -30,44 +40,40 @@ class RagService:
         if self.refusal_min_score == 0.0:
             logger.warning("REFUSAL_MIN_SCORE is 0.0: relevance-based refusal gating is disabled.")
 
-    async def ask(
+    async def ask_detailed(
         self,
         question: str,
         access: AccessContext,
-    ) -> AnswerResult:
-        """Execute end-to-end RAG answer flow under access control constraints.
-
-        Args:
-            question: User inquiry string.
-            access: Verified AccessContext (org_id, hub_id, user_tags).
-
-        Returns:
-            AnswerResult model with answer, citations, or refusal reason.
-        """
-        # 1. Access-controlled hybrid retrieval + reranking
+    ) -> tuple[AnswerResult, RagTrace]:
+        """Execute end-to-end RAG flow and return both AnswerResult and RagTrace."""
         candidates = await self.retriever.retrieve(question, access)
-
-        # 2. Context assembly (deduplication, budget, ordering)
         bundle = await self.assembler.assemble(candidates, access)
+        trace = RagTrace(
+            candidates=candidates,
+            bundle=bundle,
+            top_score=bundle.top_score,
+        )
 
         model_name = getattr(self.generator.client._llm, "model_name", "unknown")
 
-        # 3. Pre-LLM short-circuit refusals
         # Empty context check
         if not bundle.items:
             logger.info("Pre-check refusal: no eligible context found for query.")
-            return AnswerResult(
-                answer=(
-                    "I cannot answer this question because no relevant documents "
-                    "were found in your accessible knowledge base."
+            return (
+                AnswerResult(
+                    answer=(
+                        "I cannot answer this question because no relevant documents "
+                        "were found in your accessible knowledge base."
+                    ),
+                    citations=[],
+                    refusal=True,
+                    refusal_reason=RefusalReason.no_context,
+                    invalid_citations=[],
+                    prompt_version=self.generator.prompt_version,
+                    model=model_name,
+                    context_chunk_ids=[],
                 ),
-                citations=[],
-                refusal=True,
-                refusal_reason=RefusalReason.no_context,
-                invalid_citations=[],
-                prompt_version=self.generator.prompt_version,
-                model=model_name,
-                context_chunk_ids=[],
+                trace,
             )
 
         # Low relevance score check
@@ -78,19 +84,32 @@ class RagService:
                     bundle.top_score or 0.0,
                     self.refusal_min_score,
                 )
-                return AnswerResult(
-                    answer=(
-                        "I cannot answer this question because the retrieved evidence "
-                        "is below the required relevance confidence threshold."
+                return (
+                    AnswerResult(
+                        answer=(
+                            "I cannot answer this question because the retrieved evidence "
+                            "is below the required relevance confidence threshold."
+                        ),
+                        citations=[],
+                        refusal=True,
+                        refusal_reason=RefusalReason.low_relevance,
+                        invalid_citations=[],
+                        prompt_version=self.generator.prompt_version,
+                        model=model_name,
+                        context_chunk_ids=[item.chunk_id for item in bundle.items],
                     ),
-                    citations=[],
-                    refusal=True,
-                    refusal_reason=RefusalReason.low_relevance,
-                    invalid_citations=[],
-                    prompt_version=self.generator.prompt_version,
-                    model=model_name,
-                    context_chunk_ids=[item.chunk_id for item in bundle.items],
+                    trace,
                 )
 
-        # 4. Generate cited answer via LLM
-        return await self.generator.generate(question, bundle)
+        # Generate cited answer via LLM
+        result = await self.generator.generate(question, bundle)
+        return result, trace
+
+    async def ask(
+        self,
+        question: str,
+        access: AccessContext,
+    ) -> AnswerResult:
+        """Execute end-to-end RAG answer flow under access control constraints."""
+        result, _ = await self.ask_detailed(question, access)
+        return result
