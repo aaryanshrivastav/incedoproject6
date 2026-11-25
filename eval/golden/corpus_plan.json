@@ -1,0 +1,80 @@
+[
+  {
+    "glob": "financial_forecast.xlsx",
+    "hub": "default",
+    "scope": "hub",
+    "acl_tags": ["finance"]
+  },
+  {
+    "glob": "vendor_cost_allocations.xlsx",
+    "hub": "default",
+    "scope": "hub",
+    "acl_tags": ["finance"]
+  },
+  {
+    "glob": "procurement_guidelines.pdf",
+    "hub": "default",
+    "scope": "hub",
+    "acl_tags": ["finance"]
+  },
+  {
+    "glob": "travel_reimbursement.pdf",
+    "hub": "default",
+    "scope": "hub",
+    "acl_tags": ["finance"]
+  },
+  {
+    "glob": "q3_business_review.docx",
+    "hub": "default",
+    "scope": "hub",
+    "acl_tags": ["finance"]
+  },
+  {
+    "glob": "headcount_budget.xlsx",
+    "hub": "default",
+    "scope": "hub",
+    "acl_tags": ["finance"]
+  },
+  {
+    "glob": "deployment_guide.html",
+    "hub": "other",
+    "scope": "hub",
+    "acl_tags": []
+  },
+  {
+    "glob": "frontend_guidelines.html",
+    "hub": "other",
+    "scope": "hub",
+    "acl_tags": []
+  },
+  {
+    "glob": "observability_guide.html",
+    "hub": "other",
+    "scope": "hub",
+    "acl_tags": []
+  },
+  {
+    "glob": "onboarding_checklist.html",
+    "hub": "other",
+    "scope": "hub",
+    "acl_tags": []
+  },
+  {
+    "glob": "code_of_conduct.pdf",
+    "hub": "default",
+    "scope": "global",
+    "acl_tags": []
+  },
+  {
+    "glob": "open_source_compliance.pdf",
+    "hub": "default",
+    "scope": "global",
+    "acl_tags": []
+  },
+  {
+    "glob": "*",
+    "hub": "default",
+    "scope": "hub",
+    "acl_tags": []
+  }
+]

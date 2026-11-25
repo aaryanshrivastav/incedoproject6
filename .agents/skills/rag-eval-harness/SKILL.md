@@ -7,19 +7,21 @@ description: Conventions for the golden dataset, retrieval and generation metric
 
 ## Golden set (`eval/golden/*.jsonl`)
 
-One JSON object per line:
+One JSON object per line matching `kb.domain.evaluation.GoldenItem`:
 
 ```json
-{"id": "q-001", "question": "...", "reference_answer": "...",
- "source_document_ids": ["..."], "source_chunk_ids": ["..."],
+{"id": "q-0001", "question": "...", "reference_answer": "...",
  "type": "factual|multi_hop|table|unanswerable|access_restricted",
- "user_tags": [], "hub_id": "...", "reviewed": false, "notes": ""}
+ "hub": "default", "user_tags": [], "source_uris": ["..."],
+ "evidence_spans": ["..."], "restriction_kind": null, "control_for": null,
+ "provenance": "manifest|llm|handwritten", "reviewed": false,
+ "reviewed_by": null, "reviewed_at": null, "notes": "", "tags": []}
 ```
 
-- Validate with a pydantic model on load. Reject malformed lines with line numbers.
-- At least 10% `unanswerable` (expected refusal) and some `access_restricted` (expected refusal for a user without the tag).
-- Synthetic items start `reviewed=false`. Only `reviewed=true` items count toward the gate.
-- Chunk IDs can change when a document is re-chunked. Prefer document IDs plus an answer-bearing text span for matching, and keep chunk IDs as a convenience.
+- Validate with `kb.evaluation.golden.load_golden`. Collect and report all malformed/invalid lines with line numbers via `GoldenFormatError`.
+- At least 10% `unanswerable` (expected refusal, empty `source_uris`, `evidence_spans`, `reference_answer`) and `access_restricted` (`acl_tag` and `other_hub`, each paired with an authorized control item via `control_for`).
+- Synthetic/generated items start `reviewed=false`. Only `reviewed=true` items count toward the gate. Items with `provenance="llm"` can never be bulk-accepted.
+- Chunk and document UUIDs can change when a document is re-ingested or re-chunked. Items reference relative `source_uris` and exact `evidence_spans`, resolved at runtime.
 
 ## Metrics
 
